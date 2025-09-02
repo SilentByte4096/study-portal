@@ -18,26 +18,17 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        preferences: true
-      }
+      include: { preferences: true },
     });
 
     if (!user || !user.password) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
-
     if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Invalid credentials' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     // Create JWT token
@@ -47,37 +38,42 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     );
 
-    // Remove password from response
-    const { password: _, ...userResponse } = user;
+    // Build response explicitly without password (avoid unused “_” destructuring)
+    const userResponse = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      preferences: user.preferences,
+    };
 
-    // Set cookie
-    const response = NextResponse.json({ 
+    // Set cookie and return
+    const response = NextResponse.json({
       user: userResponse,
-      message: 'Login successful' 
+      message: 'Login successful',
     });
 
     response.cookies.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      // Next.js cookie maxAge is in seconds; use 7 days
+      maxAge: 7 * 24 * 60 * 60,
     });
 
     return response;
-
   } catch (error) {
-    console.error('Login error:', error);
-    
+    // Use .issues for Zod v3/v4 instead of .errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
+        { error: 'Invalid data', details: error.issues },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Login error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
