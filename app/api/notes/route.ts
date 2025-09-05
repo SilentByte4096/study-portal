@@ -1,114 +1,60 @@
+// app/api/notes/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getUserFromRequest } from '@/lib/auth-utils';
 import { z } from 'zod';
 
-// Validation schema for creating/updating a note
-const noteSchema = z.object({
+const createNoteSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: z.string().min(1, 'Content is required'),
-  tags: z.array(z.string()).default([]),
-  userId: z.string()
-});
+  tags: z.array(z.string()).optional(),
+  folderId: z.string().nullable().optional(),
+  materialId: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  isPublic: z.boolean().optional(),
+  isPinned: z.boolean().optional(),
+}); [4]
+
+type CreateNoteBody = z.infer<typeof createNoteSchema>;
 
 export async function GET(request: NextRequest) {
+  const user = await getUserFromRequest(request);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); [3]
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId') || 'demo-user';
-    
     const notes = await prisma.note.findMany({
-      where: {
-        userId: userId
-      },
-      orderBy: {
-        updatedAt: 'desc'
-      }
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
     });
-
-    return NextResponse.json({ notes });
-  } catch (error) {
-    console.error('Error fetching notes:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch notes' },
-      { status: 500 }
-    );
+    return NextResponse.json({ notes }); [3]
+  } catch {
+    return NextResponse.json({ error: 'Failed to load notes' }, { status: 500 }); [3]
   }
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getUserFromRequest(request);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); [3]
   try {
-    const body = await request.json();
-    
-    // Add demo user ID for now
-    const noteData = {
-      ...body,
-      userId: body.userId || 'demo-user'
-    };
-    
-    const validatedData = noteSchema.parse(noteData);
-    
+    const body = (await request.json()) as unknown;
+    const data: CreateNoteBody = createNoteSchema.parse(body); [4]
     const note = await prisma.note.create({
-      data: validatedData
+      data: {
+        title: data.title,
+        content: data.content,
+        excerpt: data.content.slice(0, 140),
+        tags: data.tags ?? [],
+        color: data.color ?? null,
+        isPublic: data.isPublic ?? false,
+        isPinned: data.isPinned ?? false,
+        userId: user.id,
+        folderId: data.folderId ?? null,
+      },
     });
-
-    return NextResponse.json({ note }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating note:', error);
-    
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid data', details: error.errors },
-        { status: 400 }
-      );
+    return NextResponse.json({ note }, { status: 201 }); [3]
+  } catch (err: unknown) {
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid data', details: err.issues }, { status: 400 }); [4]
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to create note' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const noteId = searchParams.get('noteId');
-    const userId = searchParams.get('userId') || 'demo-user';
-    
-    if (!noteId) {
-      return NextResponse.json(
-        { error: 'Note ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify the note belongs to the user
-    const note = await prisma.note.findFirst({
-      where: {
-        id: noteId,
-        userId: userId
-      }
-    });
-
-    if (!note) {
-      return NextResponse.json(
-        { error: 'Note not found or access denied' },
-        { status: 404 }
-      );
-    }
-
-    // Delete the note
-    await prisma.note.delete({
-      where: {
-        id: noteId
-      }
-    });
-
-    return NextResponse.json({ message: 'Note deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting note:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete note' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to create note' }, { status: 500 }); [3]
   }
 }

@@ -1,41 +1,65 @@
-import AppLayout from '@/components/layout/AppLayout';
+// app/analytics/page.tsx
+'use client';
+
+import React from 'react';
+import { useAppData } from '@/contexts/AppDataContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { motion } from 'framer-motion';
 
 export default function AnalyticsPage() {
+  const { getStats } = useAppData();
+  const stats = getStats();
+
+  // Derive only from known fields on StudyStats
+  const todayHours = `${Math.floor(stats.todayStudyTime / 60)}h ${stats.todayStudyTime % 60}m`;
+  const weekHours = `${Math.floor(stats.weekStudyTime / 60)}h ${stats.weekStudyTime % 60}m`;
+  const dailyAvgMin = Math.round(stats.weekStudyTime / 7);
+  const dailyAvg = `${Math.floor(dailyAvgMin / 60)}h ${dailyAvgMin % 60}m`;
+
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Study Analytics
-          </h1>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Export Report
-          </button>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center border border-gray-200 dark:border-gray-700">
-          <div className="max-w-md mx-auto">
-            <svg className="h-24 w-24 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Study Progress & Insights
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Track your study habits, analyze your progress, and get insights to improve your learning efficiency.
-            </p>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Coming soon:</p>
-              <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-                <li>• Study time charts and graphs</li>
-                <li>• Progress tracking by subject</li>
-                <li>• Goal completion analytics</li>
-                <li>• Performance insights and trends</li>
-              </ul>
+    <div className="p-6 space-y-6">
+      <motion.h1
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-xl font-semibold"
+      >
+        Analytics
+      </motion.h1>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Study Time</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">Today: {todayHours}</div>
+            <div className="text-sm text-muted-foreground">This Week: {weekHours}</div>
+            <div className="text-sm text-muted-foreground">Daily Avg (7d): {dailyAvg}</div>
+            {/* Optional visual: show week proportion vs an arbitrary healthy target (e.g., 600 min = 10h) */}
+            <div className="pt-1">
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span>Weekly pacing</span>
+                <span>
+                  {Math.min(100, Math.round((stats.weekStudyTime / 600) * 100))}%
+                </span>
+              </div>
+              <Progress value={Math.min(100, Math.round((stats.weekStudyTime / 600) * 100))} />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Content</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-sm text-muted-foreground">Materials: {stats.totalMaterials}</div>
+            <div className="text-sm text-muted-foreground">Flashcards: {stats.totalFlashcards}</div>
+            <div className="text-sm text-muted-foreground">Streak: {stats.studyStreak} days</div>
+          </CardContent>
+        </Card>
       </div>
-    </AppLayout>
+    </div>
   );
 }

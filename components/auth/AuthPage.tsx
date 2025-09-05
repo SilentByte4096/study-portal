@@ -1,4 +1,11 @@
 'use client';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -174,6 +181,20 @@ export default function AuthPage() {
                   </p>
                 )}
               </div>
+              <div>
+  <label className="block text-sm font-medium">Role</label>
+  <div className="mt-1">
+    <Select defaultValue="student">
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select role" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="student">Student</SelectItem>
+        <SelectItem value="teacher">Teacher</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
 
               <button
                 type="submit"
@@ -283,6 +304,20 @@ export default function AuthPage() {
                   </p>
                 )}
               </div>
+<div>
+  <label className="block text-sm font-medium">Role</label>
+  <div className="mt-1">
+    <Select defaultValue="student">
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select role" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="student">Student</SelectItem>
+        <SelectItem value="teacher">Teacher</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+</div>
 
               <button
                 type="submit"

@@ -1,3 +1,4 @@
+// components/dashboard/Dashboard.tsx
 'use client';
 
 import React from 'react';
@@ -112,7 +113,8 @@ export default function Dashboard() {
           >
             <div className="flex items-center gap-4 mb-6">
               <Avatar className="h-16 w-16 border-4 border-white/20">
-                <AvatarImage src={user?.image} />
+                {/* FIX: pass undefined instead of null to src */}
+                <AvatarImage src={user?.image ?? undefined} alt={user?.name ?? 'User'} />
                 <AvatarFallback className="bg-white/20 text-white text-xl font-bold">
                   {user?.name?.charAt(0) || 'U'}
                 </AvatarFallback>
@@ -157,7 +159,8 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 bg-orange-500/20 rounded-lg p-3">
                 <FireIcon className="h-5 w-5 text-orange-200" />
                 <span className="text-sm font-medium">
-                  Amazing! You're on a {stats.studyStreak} day study streak! Keep it up!
+                  {/* FIX: escape apostrophe */}
+                  Amazing! You&apos;re on a {stats.studyStreak} day study streak! Keep it up!
                 </span>
               </div>
             )}
