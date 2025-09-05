@@ -5,14 +5,15 @@ import { getUserFromRequest } from '@/lib/auth-utils';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { noteId: string } }
+  { params }: { params: Promise<{ noteID: string }> }
 ) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const { noteID } = await params;
     const note = await prisma.note.findFirst({
-      where: { id: params.noteId, userId: user.id },
+      where: { id: noteID, userId: user.id },
     });
     if (!note) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ note });

@@ -58,3 +58,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create deck' }, { status: 500 }); [3]
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  const user = await getUserFromRequest(request);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  
+  try {
+    const url = new URL(request.url);
+    const deckId = url.searchParams.get('deckId');
+    
+    if (!deckId) {
+      return NextResponse.json({ error: 'Deck ID is required' }, { status: 400 });
+    }
+
+    // Verify ownership before deletion
+    const deck = await prisma.flashcardDeck.findFirst({
+      where: { id: deckId, userId: user.id },
+    });
+    
+    if (!deck) {
+      return NextResponse.json({ error: 'Deck not found or access denied' }, { status: 404 });
+    }
+
+    // Use transaction for cascade deletion
+    await prisma.$transaction(async (tx) => {
+      // Delete all review logs for cards in this deck
+      await tx.reviewLog.deleteMany({
+        where: {
+          card: {
+            deckId: deckId
+          }
+        }
+      });
+      
+      // Delete all cards in the deck
+      await tx.flashcard.deleteMany({
+        where: { deckId }
+      });
+      
+      // Delete deck stats
+      await tx.deckStats.deleteMany({
+        where: { deckId }
+      });
+      
+      // Finally delete the deck
+      await tx.flashcardDeck.delete({
+        where: { id: deckId },
+      });
+    });
+
+    return NextResponse.json({ message: 'Deck deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting deck:', error);
+    return NextResponse.json({ error: 'Failed to delete deck' }, { status: 500 });
+  }
+}

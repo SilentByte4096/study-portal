@@ -103,7 +103,7 @@ export default function NotesPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild>
-            <Link href="/notes/create">
+            <Link href="/notes/new">
               <Plus className="w-4 h-4 mr-2" />
               New Note
             </Link>
@@ -144,7 +144,7 @@ export default function NotesPage() {
           </p>
           {!searchTerm && (
             <Button asChild>
-              <Link href="/notes/create">
+              <Link href="/notes/new">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Note
               </Link>

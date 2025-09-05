@@ -14,6 +14,7 @@ import {
   ChartBarIcon,
   CogIcon,
   PlusIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import {
   HomeIcon as HomeIconSolid,
@@ -24,6 +25,7 @@ import {
   CalendarIcon as CalendarIconSolid,
   ChartBarIcon as ChartBarIconSolid,
   CogIcon as CogIconSolid,
+  TrophyIcon as TrophyIconSolid,
 } from '@heroicons/react/24/solid';
 
 interface SidebarProps {
@@ -44,6 +46,7 @@ const navigation: NavItem[] = [
   { name: 'Materials', href: '/materials', icon: FolderIcon, iconSolid: FolderIconSolid },
   { name: 'Notes', href: '/notes', icon: DocumentTextIcon, iconSolid: DocumentTextIconSolid },
   { name: 'Flashcards', href: '/flashcards', icon: BookOpenIcon, iconSolid: BookOpenIconSolid },
+  { name: 'Goals', href: '/goals', icon: TrophyIcon, iconSolid: TrophyIconSolid },
   { name: 'Study Timer', href: '/timer', icon: ClockIcon, iconSolid: ClockIconSolid },
   { name: 'Calendar', href: '/calendar', icon: CalendarIcon, iconSolid: CalendarIconSolid },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon, iconSolid: ChartBarIconSolid },
@@ -53,7 +56,8 @@ const navigation: NavItem[] = [
 const quickActions = [
   { name: 'Add Material', href: '/materials/upload', color: 'bg-blue-500' },
   { name: 'Create Note', href: '/notes/new', color: 'bg-green-500' },
-  { name: 'New Flashcard', href: '/flashcards/new', color: 'bg-purple-500' },
+  { name: 'New Flashcard', href: '/flashcards/create', color: 'bg-purple-500' },
+  { name: 'Set Goal', href: '/goals/new', color: 'bg-yellow-500' },
   { name: 'Study Session', href: '/timer', color: 'bg-orange-500' },
 ];
 

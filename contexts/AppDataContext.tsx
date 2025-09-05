@@ -19,9 +19,9 @@ interface AppDataContextType {
   // Materials
   materials: StudyMaterial[];
   folders: StudyFolder[];
-  addMaterial: (material: Omit<StudyMaterial, 'id' | 'uploadedAt'>) => string;
+  addMaterial: (material: Omit<StudyMaterial, 'id' | 'uploadedAt'>) => Promise<string>;
   updateMaterial: (id: string, updates: Partial<StudyMaterial>) => void;
-  deleteMaterial: (id: string) => void;
+  deleteMaterial: (id: string) => Promise<void>;
   
   // Folders
   addFolder: (folder: Omit<StudyFolder, 'id' | 'createdAt' | 'materialCount'>) => string;
@@ -94,65 +94,87 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [goals, setGoals] = useState<StudyGoal[]>([]);
   const [searchResults, setSearchResults] = useState<StudyMaterial[]>([]);
 
-  // Load data from localStorage on mount
+  // Load data from database on mount
   useEffect(() => {
-    const savedData = localStorage.getItem('studyPortalData');
-    if (savedData) {
-      try {
-        const data = JSON.parse(savedData);
-        setMaterials(data.materials || []);
-        setFolders(data.folders || []);
-        setSessions(data.sessions || []);
-        setNotes(data.notes || []);
-        setDecks(data.decks || []);
-        setSchedules(data.schedules || []);
-        setGoals(data.goals || []);
-      } catch (error) {
-        console.error('Error loading saved data:', error);
-      }
-    }
+    loadAllData();
   }, []);
 
-  // Save data to localStorage whenever state changes
-  useEffect(() => {
-    const data = {
-      materials,
-      folders,
-      sessions,
-      notes,
-      decks,
-      schedules,
-      goals,
-    };
-    localStorage.setItem('studyPortalData', JSON.stringify(data));
-  }, [materials, folders, sessions, notes, decks, schedules, goals]);
+  const loadAllData = async () => {
+    try {
+      const [materialsRes, notesRes, decksRes, goalsRes] = await Promise.all([
+        fetch('/api/materials', { credentials: 'include' }),
+        fetch('/api/notes', { credentials: 'include' }),
+        fetch('/api/flashcards', { credentials: 'include' }),
+        fetch('/api/goals', { credentials: 'include' })
+      ]);
+
+      if (materialsRes.ok) {
+        const data = await materialsRes.json();
+        setMaterials(data.materials || []);
+      }
+      if (notesRes.ok) {
+        const data = await notesRes.json();
+        setNotes(data.notes || []);
+      }
+      if (decksRes.ok) {
+        const data = await decksRes.json();
+        setDecks(data.decks || []);
+      }
+      if (goalsRes.ok) {
+        const data = await goalsRes.json();
+        setGoals(data.goals || []);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
+
+  // Remove localStorage saving - data is now handled by the server
 
   // Material functions
-  const addMaterial = (material: Omit<StudyMaterial, 'id' | 'uploadedAt'>) => {
-    const id = uuidv4();
-    const newMaterial: StudyMaterial = {
-      ...material,
-      id,
-      uploadedAt: new Date(),
-    };
-    setMaterials(prev => [...prev, newMaterial]);
-    
-    // Update folder material count
-    if (material.folderId) {
-      updateFolder(material.folderId, {});
+  const addMaterial = async (material: Omit<StudyMaterial, 'id' | 'uploadedAt'>) => {
+    try {
+      const response = await fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(material)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMaterials(prev => [...prev, data.material]);
+        return data.material.id;
+      }
+      throw new Error('Failed to add material');
+    } catch (error) {
+      console.error('Error adding material:', error);
+      throw error;
     }
-    
-    return id;
   };
 
   const updateMaterial = (id: string, updates: Partial<StudyMaterial>) => {
     setMaterials(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
   };
 
-  const deleteMaterial = (id: string) => {
-    setMaterials(prev => prev.filter(m => m.id !== id));
-    // Also delete associated notes
-    setNotes(prev => prev.filter(n => n.materialId !== id));
+  const deleteMaterial = async (id: string) => {
+    try {
+      const response = await fetch(`/api/materials?materialId=${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        setMaterials(prev => prev.filter(m => m.id !== id));
+        // Also remove from notes if they reference this material
+        setNotes(prev => prev.filter(n => n.materialId !== id));
+      } else {
+        throw new Error('Failed to delete material');
+      }
+    } catch (error) {
+      console.error('Error deleting material:', error);
+      throw error;
+    }
   };
 
   // Folder functions
@@ -392,7 +414,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       .filter(s => new Date(s.startTime) >= monthAgo)
       .reduce((total, session) => total + session.duration, 0);
 
-    const totalFlashcards = decks.reduce((total, deck) => total + deck.cards.length, 0);
+    const totalFlashcards = decks.reduce((total, deck) => total + (deck.cards?.length || 0), 0);
     const averageSessionLength = sessions.length > 0 ? totalStudyTime / sessions.length : 0;
 
     // Calculate study streak (consecutive days with study sessions)

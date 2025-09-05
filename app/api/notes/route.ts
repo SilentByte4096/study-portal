@@ -58,3 +58,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create note' }, { status: 500 }); [3]
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  const user = await getUserFromRequest(request);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  
+  try {
+    const url = new URL(request.url);
+    const noteId = url.searchParams.get('noteId');
+    
+    if (!noteId) {
+      return NextResponse.json({ error: 'Note ID is required' }, { status: 400 });
+    }
+
+    // Verify ownership before deletion
+    const note = await prisma.note.findFirst({
+      where: { id: noteId, userId: user.id },
+    });
+    
+    if (!note) {
+      return NextResponse.json({ error: 'Note not found or access denied' }, { status: 404 });
+    }
+
+    await prisma.note.delete({
+      where: { id: noteId },
+    });
+
+    return NextResponse.json({ message: 'Note deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting note:', error);
+    return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
+  }
+}

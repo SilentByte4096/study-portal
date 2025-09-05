@@ -19,10 +19,11 @@ function contentTypeFor(filename: string): string {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { filename: string } }
+  { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const safeName = basename(params.filename);
+    const { filename } = await params;
+    const safeName = basename(filename);
     const filePath = join(process.cwd(), 'uploads', safeName);
 
     const [buf, st] = await Promise.all([readFile(filePath), stat(filePath)]);

@@ -12,14 +12,15 @@ const addCardSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { deckId: string } }
+  { params }: { params: Promise<{ deckID: string }> }
 ) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const { deckID } = await params;
     const deck = await prisma.flashcardDeck.findFirst({
-      where: { id: params.deckId, userId: user.id },
+      where: { id: deckID, userId: user.id },
       include: { cards: { orderBy: { createdAt: 'desc' } } },
     });
     if (!deck) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -31,17 +32,18 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { deckId: string } }
+  { params }: { params: Promise<{ deckID: string }> }
 ) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    const { deckID } = await params;
     const body = (await request.json()) as unknown;
     const data = addCardSchema.parse(body);
     // Ownership guard
     const deck = await prisma.flashcardDeck.findFirst({
-      where: { id: params.deckId, userId: user.id },
+      where: { id: deckID, userId: user.id },
       select: { id: true },
     });
     if (!deck) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -51,7 +53,7 @@ export async function POST(
         front: data.front,
         back: data.back,
         hint: data.hint ?? null,
-        deckId: params.deckId,
+        deckId: deckID,
       },
     });
     return NextResponse.json({ card }, { status: 201 });

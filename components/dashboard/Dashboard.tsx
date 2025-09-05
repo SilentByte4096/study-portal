@@ -1,7 +1,7 @@
 // components/dashboard/Dashboard.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppData } from '@/contexts/AppDataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -11,45 +11,95 @@ import {
   FolderIcon,
   FireIcon,
   TrophyIcon,
-  ChartBarIcon,
   PlusIcon,
   EyeIcon,
-  ArrowUpIcon,
-  CalendarIcon
+  ArrowUpIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
+
+interface DashboardStats {
+  totalMaterials: number;
+  totalNotes: number;
+  totalFlashcards: number;
+  totalDecks: number;
+  totalGoals: number;
+  activeGoals: number;
+  completedGoals: number;
+  totalStudyTime: number;
+  todayStudyTime: number;
+  weekStudyTime: number;
+  monthStudyTime: number;
+  studyStreak: number;
+  averageSessionLength: number;
+  totalSessions: number;
+  overallProgress: number;
+  todayStudyTimeFormatted: string;
+  weekStudyTimeFormatted: string;
+  monthStudyTimeFormatted: string;
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { materials, notes, decks, sessions, goals, getStats } = useAppData();
+  const { materials } = useAppData();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const stats = getStats();
+  useEffect(() => {
+    fetchStats();
+  }, []);
+  
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/dashboard/stats', { credentials: 'include' });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (loading || !stats) {
+    return (
+      <div className="space-y-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   const recentMaterials = materials.slice(0, 3);
-  const activeGoals = goals.filter(goal => !goal.completed).slice(0, 2);
-  const recentSessions = sessions.slice(-3).reverse();
+  const activeGoalsCount = stats.activeGoals || 0;
 
   const statCards = [
     {
       title: 'Study Time Today',
-      value: `${Math.floor(stats.todayStudyTime / 60)}h ${stats.todayStudyTime % 60}m`,
+      value: stats.todayStudyTimeFormatted || '0h 0m',
       icon: ClockIcon,
       color: 'bg-blue-500',
-      change: '+12%',
-      trend: 'up'
+      change: stats.todayStudyTime > 0 ? 'Active today!' : 'No study time yet',
+      trend: stats.todayStudyTime > 0 ? 'up' : 'neutral'
     },
     {
       title: 'Materials',
       value: stats.totalMaterials.toString(),
       icon: FolderIcon,
       color: 'bg-green-500',
-      change: '+3 new',
+      change: `${stats.totalMaterials} total`,
       trend: 'up'
     },
     {
@@ -57,7 +107,7 @@ export default function Dashboard() {
       value: stats.totalFlashcards.toString(),
       icon: BookOpenIcon,
       color: 'bg-purple-500',
-      change: '+15 cards',
+      change: `${stats.totalDecks} decks`,
       trend: 'up'
     },
     {
@@ -65,7 +115,7 @@ export default function Dashboard() {
       value: `${stats.studyStreak} days`,
       icon: FireIcon,
       color: 'bg-orange-500',
-      change: stats.studyStreak > 0 ? 'Active!' : 'Start today',
+      change: stats.studyStreak > 0 ? 'Keep it up!' : 'Start today',
       trend: stats.studyStreak > 0 ? 'up' : 'neutral'
     }
   ];
@@ -135,7 +185,7 @@ export default function Dashboard() {
                   <ClockIcon className="h-5 w-5" />
                   <span className="text-sm font-medium">This Week</span>
                 </div>
-                <span className="text-2xl font-bold">{Math.floor(stats.weekStudyTime / 60)}h {stats.weekStudyTime % 60}m</span>
+                <span className="text-2xl font-bold">{stats.weekStudyTimeFormatted || '0h 0m'}</span>
               </div>
               
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
@@ -143,7 +193,7 @@ export default function Dashboard() {
                   <TrophyIcon className="h-5 w-5" />
                   <span className="text-sm font-medium">Goals</span>
                 </div>
-                <span className="text-2xl font-bold">{activeGoals.length}</span>
+                <span className="text-2xl font-bold">{activeGoalsCount}</span>
               </div>
               
               <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
@@ -293,33 +343,22 @@ export default function Dashboard() {
               View All →
             </Link>
           </div>
-          {activeGoals.length > 0 ? (
+          {activeGoalsCount > 0 ? (
             <div className="space-y-4">
-              {activeGoals.map((goal) => (
-                <div key={goal.id} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {goal.title}
-                    </h3>
-                    <TrophyIcon className="h-5 w-5 text-yellow-500" />
-                  </div>
-                  <div className="mb-2">
-                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      <span>{goal.current} / {goal.target} {goal.unit}</span>
-                      <span>{Math.round((goal.current / goal.target) * 100)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min((goal.current / goal.target) * 100, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Due: {new Date(goal.deadline).toLocaleDateString()}
-                  </p>
+              <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    You have {activeGoalsCount} active goals
+                  </h3>
+                  <TrophyIcon className="h-5 w-5 text-yellow-500" />
                 </div>
-              ))}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  Keep working towards your study objectives!
+                </p>
+                <Link href="/goals" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm font-medium">
+                  View all goals →
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8">
@@ -335,44 +374,38 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity */}
-      {recentSessions.length > 0 && (
+      {stats.totalSessions > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Study Sessions
+              Study Statistics
             </h2>
             <Link href="/analytics" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm font-medium">
               View Analytics →
             </Link>
           </div>
-          <div className="space-y-3">
-            {recentSessions.map((session) => (
-              <div key={session.id} className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
-                <ClockIcon className="h-8 w-8 text-blue-500" />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    {session.materialTitle || 'Study Session'}
-                  </h3>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                    <span>{session.duration} minutes</span>
-                    <span>•</span>
-                    <span>{new Date(session.startTime).toLocaleDateString()}</span>
-                    {session.rating && (
-                      <>
-                        <span>•</span>
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <svg key={i} className={`h-4 w-4 ${i < session.rating! ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+              <div className="flex items-center gap-2 mb-1">
+                <ClockIcon className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Total Sessions</span>
               </div>
-            ))}
+              <span className="text-xl font-bold text-gray-900 dark:text-white">{stats.totalSessions}</span>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+              <div className="flex items-center gap-2 mb-1">
+                <ClockIcon className="h-4 w-4 text-green-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Avg Session</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">{stats.averageSessionLength} min</span>
+            </div>
+            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700">
+              <div className="flex items-center gap-2 mb-1">
+                <ClockIcon className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Total Time</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">{Math.floor(stats.totalStudyTime / 60)}h {stats.totalStudyTime % 60}m</span>
+            </div>
           </div>
         </div>
       )}

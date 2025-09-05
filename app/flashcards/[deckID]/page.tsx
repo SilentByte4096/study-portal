@@ -18,7 +18,7 @@ function getErrorMessage(err: unknown): string {
 
 export default function DeckDetailPage() {
   // Match the folder segment: if your folder is [deckID], use useParams<{ deckID: string }>()
-  const { deckId } = useParams<{ deckId: string }>();
+  const { deckID } = useParams<{ deckID: string }>();
 
   const [deck, setDeck] = useState<Deck | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -49,17 +49,17 @@ export default function DeckDetailPage() {
 
   // Refetch when the route param changes
   useEffect(() => {
-    if (typeof deckId === 'string' && deckId.length > 0) {
-      void load(deckId);
+    if (typeof deckID === 'string' && deckID.length > 0) {
+      void load(deckID);
     }
-  }, [deckId]);
+  }, [deckID]);
 
   function selectCard(id: string) {
     setActiveId(id);
     setShowAnswer(false);
   }
 
-  if (!deckId) return <div className="p-6 text-red-600">Invalid deck id</div>;
+  if (!deckID) return <div className="p-6 text-red-600">Invalid deck id</div>;
   if (loading) return <div className="p-6">Loading deck…</div>;
   if (err) return <div className="p-6 text-red-600">Error: {err}</div>;
   if (!deck) return <div className="p-6 text-red-600">Deck not found</div>;
